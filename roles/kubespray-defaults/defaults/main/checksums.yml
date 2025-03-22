@@ -725,6 +725,15 @@ crun_checksums:
     1.11.1: sha256:723528913c24fac8fc7c4418b9780090eba74ac2d82435c673dedc3af39d5abe
     1.9.2: sha256:42813b5bea2137bf9abcd1bcaa098a7d61fbbffd2a35d9c9f0f1ba79fb74eb5b
 youki_checksums:
+  arm64:
+    0.4.1: 0
+    0.4.0: 0
+    0.3.3: 0
+    0.3.2: 0
+    0.3.1: 0
+    0.3.0: 0
+    0.2.0: 0
+    0.1.0: 0
   amd64:
     0.4.1: sha256:6504a43c28710d2cb3dd6535ae9222c0570e954a799a787ccf5e5d611996bf11
     0.4.0: sha256:a9fb31c7388ed786a2a1b6361cf4aaa7c3e3b62be4c3d36dc15331416a3d6290
@@ -735,6 +744,14 @@ youki_checksums:
     0.2.0: sha256:b268689a91db07feebfd41d5806b10c7d051fbcbf7efb15076e2228763ac0762
     0.1.0: sha256:f00677e9674215b44f140f0c0f4b79b0001c72c073d2c5bb514b7a9dcb13bdbc
 kata_containers_binary_checksums:
+  arm64:
+    3.2.0: 0
+    3.1.3: 0
+    3.1.2: 0
+    3.1.1: 0
+    3.1.0: 0
+    3.0.2: 0
+    3.0.1: 0
   amd64:
     3.2.0: sha256:21bb8484a060450d6522f29bed7d88d773c28520774eaa2c522b6f47fd12c4a1
     3.1.3: sha256:266c906222c85b67867dea3c9bdb58c6da0b656be3a29f9e0bed227c939f3f26
