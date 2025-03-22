@@ -1,1 +1,4 @@
-# 역할  IP주소         호스트네임       SSH유저         SSH비밀번호    포트   sudo비밀번호
+# 역할   IP주소         호스트네임       SSH유저         SSH비밀번호    포트   sudo비밀번호
+(master)
+(worker)
+  (lb)

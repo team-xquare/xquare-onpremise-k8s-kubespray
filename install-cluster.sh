@@ -2,10 +2,11 @@
 
 SERVER_LIST="./servers.txt"
 INVENTORY_FILE="./inventory/xquare/inventory.ini"
+GROUP_VARS_FILE="./inventory/xquare/group_vars/k8s_cluster/k8s-cluster.yml"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 if [ ! -f "$SERVER_LIST" ]; then
-    echo "[ERROR] servers.txt 파일 없음"
+    echo "[ERROR] servers.txt 파일이 존재하지 않습니다."
     exit 1
 fi
 
@@ -41,10 +42,13 @@ EOF
 SETUP_COMMANDS=${SETUP_COMMANDS/__HOSTS_ENTRY__/$HOSTS_ENTRY}
 
 mkdir -p "$(dirname "$INVENTORY_FILE")"
+mkdir -p "$(dirname "$GROUP_VARS_FILE")"
+
 echo -e "[kube_control_plane]" > "$INVENTORY_FILE"
+
 ETCD_BLOCK=""
 WORKER_BLOCK=""
-
+LB_BLOCK=""
 MASTER_INDEX=1
 
 while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
@@ -59,15 +63,26 @@ while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
         echo "[FAILED] $HOSTNAME ($IP)"
     fi
 
-    if [ "$ROLE" == "master" ]; then
-        LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
-        echo "$LINE" >> "$INVENTORY_FILE"
-        ETCD_BLOCK+="$LINE"$'\n'
-        ((MASTER_INDEX++))
-    elif [ "$ROLE" == "worker" ]; then
-        LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
-        WORKER_BLOCK+="$LINE"$'\n'
-    fi
+    case "$ROLE" in
+        master)
+            LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+            echo "$LINE" >> "$INVENTORY_FILE"
+            ETCD_BLOCK+="$LINE"$'\n'
+            ((MASTER_INDEX++))
+            ;;
+        worker)
+            LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+            WORKER_BLOCK+="$LINE"$'\n'
+            ;;
+        lb)
+            LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+            LB_BLOCK+="$LINE"$'\n'
+            ;;
+        *)
+            echo "[WARN] 알 수 없는 역할: $ROLE"
+            ;;
+    esac
+
 done < "$SERVER_LIST"
 
 echo -e "\n[etcd]" >> "$INVENTORY_FILE"
@@ -76,6 +91,25 @@ echo -n "$ETCD_BLOCK" >> "$INVENTORY_FILE"
 echo -e "\n[kube_node]" >> "$INVENTORY_FILE"
 echo -n "$WORKER_BLOCK" >> "$INVENTORY_FILE"
 
+if [ -n "$LB_BLOCK" ]; then
+    echo -e "\n[kube_lb]" >> "$INVENTORY_FILE"
+    echo -n "$LB_BLOCK" >> "$INVENTORY_FILE"
+fi
+
 echo -e "\n[k8s_cluster:children]\nkube_control_plane\nkube_node" >> "$INVENTORY_FILE"
 
 echo "[INFO] inventory.ini 생성 완료: $INVENTORY_FILE"
+
+LB_IP=$(awk '$1 == "lb" {print $2; exit}' "$SERVER_LIST")
+
+if [ -n "$LB_IP" ]; then
+  cat > "$GROUP_VARS_FILE" <<EOF
+loadbalancer_apiserver:
+  address: $LB_IP
+  port: 6443
+EOF
+
+  echo "[INFO] k8s-cluster.yml 설정 완료: $GROUP_VARS_FILE"
+else
+  echo "[WARN] lb 노드가 없어 loadbalancer 설정 생략"
+fi
