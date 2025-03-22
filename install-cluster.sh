@@ -54,9 +54,9 @@ while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
         "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
 
     if [ $? -eq 0 ]; then
-        echo "✅ 성공: $HOSTNAME ($IP)"
+        echo "[SUCCESS] $HOSTNAME ($IP)"
     else
-        echo "❌ 실패: $HOSTNAME ($IP)"
+        echo "[FAILED] $HOSTNAME ($IP)"
     fi
 
     if [ "$ROLE" == "master" ]; then
