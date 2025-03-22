@@ -1,4 +1,1 @@
 # 역할  IP주소         호스트네임       SSH유저         SSH비밀번호    포트   sudo비밀번호
-master 192.168.1.122 hyunsu-master1 hyunsu-master qpwoeiru1768 22    qpwoeiru1768
-worker 192.168.1.121 hyunsu-worker1 hyunsu-worker qpwoeiru1768 22    qpwoeiru1768
-worker 192.168.1.105 hyunsu-worker2 hyunsu-worker qpwoeiru1768 22    qpwoeiru1768
