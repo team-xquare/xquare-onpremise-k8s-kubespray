@@ -1,0 +1,81 @@
+#!/bin/bash
+
+SERVER_LIST="./servers.txt"
+INVENTORY_FILE="./inventory/xquare/inventory.ini"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+if [ ! -f "$SERVER_LIST" ]; then
+    echo "[ERROR] servers.txt 파일 없음"
+    exit 1
+fi
+
+if ! command -v sshpass &>/dev/null; then
+    echo "[INFO] sshpass 설치 중"
+    brew install hudochenkov/sshpass/sshpass
+fi
+
+HOSTS_ENTRY=$(awk '{print $2" "$3}' "$SERVER_LIST")
+
+read -r -d '' SETUP_COMMANDS <<'EOF'
+echo "$SUDO_PASS" | sudo -S hostnamectl set-hostname "$HOSTNAME"
+
+echo "$SUDO_PASS" | sudo -S bash -c "cat >> /etc/hosts <<EOL
+__HOSTS_ENTRY__
+EOL"
+
+echo "$SUDO_PASS" | sudo -S ufw disable
+echo "$SUDO_PASS" | sudo -S swapoff -a
+echo "$SUDO_PASS" | sudo -S sed -i '/swap/d' /etc/fstab
+
+echo "$SUDO_PASS" | sudo -S modprobe br_netfilter
+echo 'br_netfilter' | echo "$SUDO_PASS" | sudo -S tee /etc/modules-load.d/br_netfilter.conf
+
+echo "$SUDO_PASS" | sudo -S bash -c "cat > /etc/sysctl.d/k8s.conf <<EOL
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOL"
+
+echo "$SUDO_PASS" | sudo -S sysctl --system
+EOF
+
+SETUP_COMMANDS=${SETUP_COMMANDS/__HOSTS_ENTRY__/$HOSTS_ENTRY}
+
+mkdir -p "$(dirname "$INVENTORY_FILE")"
+echo -e "[kube_control_plane]" > "$INVENTORY_FILE"
+ETCD_BLOCK=""
+WORKER_BLOCK=""
+
+MASTER_INDEX=1
+
+while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
+    echo "🚀 설정 중: $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
+
+    sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
+        "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
+
+    if [ $? -eq 0 ]; then
+        echo "✅ 성공: $HOSTNAME ($IP)"
+    else
+        echo "❌ 실패: $HOSTNAME ($IP)"
+    fi
+
+    if [ "$ROLE" == "master" ]; then
+        LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+        echo "$LINE" >> "$INVENTORY_FILE"
+        ETCD_BLOCK+="$LINE"$'\n'
+        ((MASTER_INDEX++))
+    elif [ "$ROLE" == "worker" ]; then
+        LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+        WORKER_BLOCK+="$LINE"$'\n'
+    fi
+done < "$SERVER_LIST"
+
+echo -e "\n[etcd]" >> "$INVENTORY_FILE"
+echo -n "$ETCD_BLOCK" >> "$INVENTORY_FILE"
+
+echo -e "\n[kube_node]" >> "$INVENTORY_FILE"
+echo -n "$WORKER_BLOCK" >> "$INVENTORY_FILE"
+
+echo -e "\n[k8s_cluster:children]\nkube_control_plane\nkube_node" >> "$INVENTORY_FILE"
+
+echo "[INFO] inventory.ini 생성 완료: $INVENTORY_FILE"
