@@ -48,20 +48,19 @@ echo -e "[kube_control_plane]" > "$INVENTORY_FILE"
 
 ETCD_BLOCK=""
 WORKER_BLOCK=""
-LB_BLOCK=""
 MASTER_INDEX=1
 
 while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
-    echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
-
-    sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
-        "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
-
-    if [ $? -eq 0 ]; then
-        echo "[SUCCESS] $HOSTNAME ($IP)"
-    else
-        echo "[FAILED] $HOSTNAME ($IP)"
-    fi
+#    echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
+#
+#    sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
+#        "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
+#
+#    if [ $? -eq 0 ]; then
+#        echo "[SUCCESS] $HOSTNAME ($IP)"
+#    else
+#        echo "[FAILED] $HOSTNAME ($IP)"
+#    fi
 
     case "$ROLE" in
         master)
@@ -73,10 +72,6 @@ while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
         worker)
             LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
             WORKER_BLOCK+="$LINE"$'\n'
-            ;;
-        lb)
-            LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
-            LB_BLOCK+="$LINE"$'\n'
             ;;
         *)
             echo "[WARN] 알 수 없는 역할: $ROLE"
@@ -91,25 +86,4 @@ echo -n "$ETCD_BLOCK" >> "$INVENTORY_FILE"
 echo -e "\n[kube_node]" >> "$INVENTORY_FILE"
 echo -n "$WORKER_BLOCK" >> "$INVENTORY_FILE"
 
-if [ -n "$LB_BLOCK" ]; then
-    echo -e "\n[kube_lb]" >> "$INVENTORY_FILE"
-    echo -n "$LB_BLOCK" >> "$INVENTORY_FILE"
-fi
-
-echo -e "\n[k8s_cluster:children]\nkube_control_plane\nkube_node" >> "$INVENTORY_FILE"
-
 echo "[INFO] inventory.ini 생성 완료: $INVENTORY_FILE"
-
-LB_IP=$(awk '$1 == "lb" {print $2; exit}' "$SERVER_LIST")
-
-if [ -n "$LB_IP" ]; then
-  cat > "$GROUP_VARS_FILE" <<EOF
-loadbalancer_apiserver:
-  address: $LB_IP
-  port: 6443
-EOF
-
-  echo "[INFO] k8s-cluster.yml 설정 완료: $GROUP_VARS_FILE"
-else
-  echo "[WARN] lb 노드가 없어 loadbalancer 설정 생략"
-fi

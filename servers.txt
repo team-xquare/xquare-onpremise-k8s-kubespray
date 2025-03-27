@@ -1,1 +1,4 @@
-# 역할(master, worker, lb)   IP주소         호스트네임       SSH유저         SSH비밀번호     포트    sudo비밀번호
+master 192.168.1.3 xquare-master1 xquare-master xquare 22 xquare
+master 192.168.1.7 xquare-master2 xquare-master xquare 22 xquare
+master 192.168.1.5 xquare-master3 xquare-master xquare 22 xquare
+worker 192.168.1.6 xquare-worker1 xquare xquare 22 xquare
