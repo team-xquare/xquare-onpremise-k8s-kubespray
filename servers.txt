@@ -1,4 +1,6 @@
-master 192.168.1.3 xquare-master1 xquare-master xquare 22 xquare
-master 192.168.1.7 xquare-master2 xquare-master xquare 22 xquare
-master 192.168.1.5 xquare-master3 xquare-master xquare 22 xquare
-worker 192.168.1.6 xquare-worker1 xquare xquare 22 xquare
+master 10.220.147.6 xquare-master1 xquare-master xquare 2222 xquare
+master 10.220.147.7 xquare-master2 xquare-master xquare 2222 xquare
+master 10.220.147.8 xquare-master3 xquare-master xquare 2222 xquare
+
+worker 10.220.147.4 xquare-worker1 xquare xquare 2222 xquare
+worker 10.220.147.5 xquare-worker2 xquare xquare 2222 xquare

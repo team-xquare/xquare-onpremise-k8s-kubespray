@@ -51,16 +51,16 @@ WORKER_BLOCK=""
 MASTER_INDEX=1
 
 while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
-#    echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
-#
-#    sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
-#        "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
-#
-#    if [ $? -eq 0 ]; then
-#        echo "[SUCCESS] $HOSTNAME ($IP)"
-#    else
-#        echo "[FAILED] $HOSTNAME ($IP)"
-#    fi
+    echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
+
+    sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
+        "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
+
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] $HOSTNAME ($IP)"
+    else
+        echo "[FAILED] $HOSTNAME ($IP)"
+    fi
 
     case "$ROLE" in
         master)
