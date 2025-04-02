@@ -3,7 +3,6 @@
 # 파일 경로 설정
 SERVER_LIST="./servers.txt"
 INVENTORY_FILE="./inventory/xquare/inventory.ini"
-GROUP_VARS_FILE="./inventory/xquare/group_vars/k8s_cluster/k8s-cluster.yml"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 # servers.txt 파일 존재 확인
@@ -12,12 +11,55 @@ if [ ! -f "$SERVER_LIST" ]; then
     exit 1
 fi
 
-# sshpass 설치 확인 및 설치
-if ! command -v sshpass &>/dev/null; then
-    echo "[INFO] sshpass를 설치합니다."
-    sudo apt-get update
-    sudo apt-get install -y sshpass
+# 필수 패키지 설치 확인 및 설치
+install_package() {
+    PACKAGE_NAME=$1
+    INSTALL_COMMAND=$2
+    if ! command -v $PACKAGE_NAME &>/dev/null; then
+        echo "[INFO] $PACKAGE_NAME를 설치합니다."
+        eval $INSTALL_COMMAND
+    else
+        echo "[INFO] $PACKAGE_NAME가 이미 설치되어 있습니다."
+    fi
+}
+
+# sshpass 설치
+install_package "sshpass" "sudo apt-get update && sudo apt-get install -y sshpass"
+
+# Python3 및 pip 설치
+install_package "python3" "sudo apt-get install -y python3"
+install_package "pip3" "sudo apt-get install -y python3-pip"
+
+# Ansible 설치
+install_package "ansible" "pip3 install ansible"
+
+# Jinja2 버전 확인 및 설치
+if ! python3 -c "import jinja2; assert jinja2.__version__ >= '2.11'" &>/dev/null; then
+    echo "[INFO] Jinja2를 설치하거나 업그레이드합니다."
+    pip3 install Jinja2>=2.11
+else
+    echo "[INFO] Jinja2가 이미 설치되어 있거나 최신 버전입니다."
 fi
+
+# netaddr 라이브러리 설치
+if ! python3 -c "import netaddr" &>/dev/null; then
+    echo "[INFO] netaddr 라이브러리를 설치합니다."
+    pip3 install netaddr
+else
+    echo "[INFO] netaddr 라이브러리가 이미 설치되어 있습니다."
+fi
+
+# Kubespray 클론
+if [ ! -d "kubespray" ]; then
+    echo "[INFO] Kubespray를 클론합니다."
+    git clone https://github.com/kubernetes-sigs/kubespray.git
+else
+    echo "[INFO] Kubespray 디렉토리가 이미 존재합니다."
+fi
+
+# Kubespray requirements 설치
+echo "[INFO] Kubespray requirements를 설치합니다."
+pip3 install -r kubespray/requirements.txt
 
 # 서버 목록에서 /etc/hosts에 추가할 엔트리 생성
 HOSTS_ENTRY=$(awk '{print $2" "$3}' "$SERVER_LIST")
@@ -48,9 +90,8 @@ EOF
 # 호스트 엔트리 삽입
 SETUP_COMMANDS=${SETUP_COMMANDS/__HOSTS_ENTRY__/$HOSTS_ENTRY}
 
-# 인벤토리 및 그룹 변수 디렉토리 생성
+# 인벤토리 디렉토리 생성
 mkdir -p "$(dirname "$INVENTORY_FILE")"
-mkdir -p "$(dirname "$GROUP_VARS_FILE")"
 
 # 인벤토리 파일 초기화
 echo -e "[kube_control_plane]" > "$INVENTORY_FILE"
@@ -63,13 +104,15 @@ MASTER_INDEX=1
 while IFS=' ' read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
     echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
 
+    # 서버에 설정 명령어 실행
     sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
         "export HOSTNAME=$HOSTNAME SUDO_PASS=$SUDO_PASS; bash -s" <<< "$SETUP_COMMANDS"
 
     if [ $? -eq 0 ]; then
-        echo "[SUCCESS] $HOSTNAME ($IP)"
+        echo "[SUCCESS] $HOSTNAME ($IP) 설정 완료"
     else
-        echo "[FAILED] $HOSTNAME ($IP)"
+        echo "[FAILED] $HOSTNAME ($IP) 설정 실패"
+        continue
     fi
 
     # 역할에 따른 인벤토리 항목 추가
@@ -100,8 +143,10 @@ echo -n "$WORKER_BLOCK" >> "$INVENTORY_FILE"
 
 echo "[INFO] inventory.ini 생성 완료: $INVENTORY_FILE"
 
+# 노드 PING 테스트
 echo "[INFO] 노드 PING 테스트"
 ansible all -m ping -i $INVENTORY_FILE
 
-echo "[INFO] Cluster 설치 시작"
-ansible-playbook -v -i $INVENTORY_FILE
+# Kubespray를 통한 Kubernetes 클러스터 설치
+echo "[INFO] Kubernetes 클러스터 설치 시작"
+ansible-playbook -i $INVENTORY_FILE kubespray/cluster.yml
