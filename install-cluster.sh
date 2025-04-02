@@ -104,19 +104,20 @@ while IFS=' ' read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
     # 역할에 따른 인벤토리 항목 추가
     case "$ROLE" in
         master)
-            LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+            LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_port=$SSH_PORT ansible_become=yes ansible_become_pass=$SUDO_PASS"
             echo "$LINE" >> "$INVENTORY_FILE"
             ETCD_BLOCK+="$LINE"$'\n'
             ((MASTER_INDEX++))
             ;;
         worker)
-            LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
+            LINE="$HOSTNAME ansible_host=$IP ip=$IP ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_port=$SSH_PORT ansible_become=yes ansible_become_pass=$SUDO_PASS"
             WORKER_BLOCK+="$LINE"$'\n'
             ;;
         *)
             echo "[WARN] 알 수 없는 역할: $ROLE"
             ;;
     esac
+
 
 done < "$SERVER_LIST"
 
