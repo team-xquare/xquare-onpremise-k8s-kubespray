@@ -99,3 +99,9 @@ echo -e "\n[kube_node]" >> "$INVENTORY_FILE"
 echo -n "$WORKER_BLOCK" >> "$INVENTORY_FILE"
 
 echo "[INFO] inventory.ini 생성 완료: $INVENTORY_FILE"
+
+echo "[INFO] 노드 PING 테스트"
+ansible all -m ping -i $INVENTORY_FILE
+
+echo "[INFO] Cluster 설치 시작"
+ansible-playbook -v -i $INVENTORY_FILE
