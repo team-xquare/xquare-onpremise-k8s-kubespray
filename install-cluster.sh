@@ -1,22 +1,28 @@
 #!/bin/bash
 
+# 파일 경로 설정
 SERVER_LIST="./servers.txt"
 INVENTORY_FILE="./inventory/xquare/inventory.ini"
 GROUP_VARS_FILE="./inventory/xquare/group_vars/k8s_cluster/k8s-cluster.yml"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
+# servers.txt 파일 존재 확인
 if [ ! -f "$SERVER_LIST" ]; then
     echo "[ERROR] servers.txt 파일이 존재하지 않습니다."
     exit 1
 fi
 
+# sshpass 설치 확인 및 설치
 if ! command -v sshpass &>/dev/null; then
-    echo "[INFO] sshpass 설치 중"
-    brew install hudochenkov/sshpass/sshpass
+    echo "[INFO] sshpass를 설치합니다."
+    sudo apt-get update
+    sudo apt-get install -y sshpass
 fi
 
+# 서버 목록에서 /etc/hosts에 추가할 엔트리 생성
 HOSTS_ENTRY=$(awk '{print $2" "$3}' "$SERVER_LIST")
 
+# 서버 설정 명령어 정의
 read -r -d '' SETUP_COMMANDS <<'EOF'
 echo "$SUDO_PASS" | sudo -S hostnamectl set-hostname "$HOSTNAME"
 
@@ -39,18 +45,22 @@ EOL"
 echo "$SUDO_PASS" | sudo -S sysctl --system
 EOF
 
+# 호스트 엔트리 삽입
 SETUP_COMMANDS=${SETUP_COMMANDS/__HOSTS_ENTRY__/$HOSTS_ENTRY}
 
+# 인벤토리 및 그룹 변수 디렉토리 생성
 mkdir -p "$(dirname "$INVENTORY_FILE")"
 mkdir -p "$(dirname "$GROUP_VARS_FILE")"
 
+# 인벤토리 파일 초기화
 echo -e "[kube_control_plane]" > "$INVENTORY_FILE"
 
 ETCD_BLOCK=""
 WORKER_BLOCK=""
 MASTER_INDEX=1
 
-while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
+# servers.txt 파일을 읽어 각 서버에 설정 적용
+while IFS=' ' read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
     echo "[SETTING..] $HOSTNAME ($IP:$SSH_PORT) | User: $SSH_USER | Role: $ROLE"
 
     sshpass -p "$SSH_PASS" ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_USER@$IP" \
@@ -62,6 +72,7 @@ while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
         echo "[FAILED] $HOSTNAME ($IP)"
     fi
 
+    # 역할에 따른 인벤토리 항목 추가
     case "$ROLE" in
         master)
             LINE="$HOSTNAME ansible_host=$IP ip=$IP etcd_member_name=etcd$MASTER_INDEX ansible_user=$SSH_USER ansible_ssh_pass=$SSH_PASS ansible_become=yes ansible_become_pass=$SUDO_PASS"
@@ -80,6 +91,7 @@ while read -r ROLE IP HOSTNAME SSH_USER SSH_PASS SSH_PORT SUDO_PASS; do
 
 done < "$SERVER_LIST"
 
+# etcd 및 kube_node 섹션 추가
 echo -e "\n[etcd]" >> "$INVENTORY_FILE"
 echo -n "$ETCD_BLOCK" >> "$INVENTORY_FILE"
 
