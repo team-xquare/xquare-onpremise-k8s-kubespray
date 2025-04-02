@@ -1,6 +1,6 @@
-master 10.220.147.6 xquare-master1 xquare-master xquare 2222 xquare
-master 10.220.147.7 xquare-master2 xquare-master xquare 2222 xquare
-master 10.220.147.8 xquare-master3 xquare-master xquare 2222 xquare
+master 10.220.147.66 xquare-master1 xquare-master xquare 2222 xquare
+master 10.220.147.67 xquare-master2 xquare-master xquare 2222 xquare
+master 10.220.147.69 xquare-master3 xquare-master xquare 2222 xquare
 
-worker 10.220.147.4 xquare-worker1 xquare xquare 2222 xquare
-worker 10.220.147.5 xquare-worker2 xquare xquare 2222 xquare
+worker 10.220.147.64 xquare-worker1 xquare xquare 2222 xquare
+worker 10.220.147.65 xquare-worker2 xquare xquare 2222 xquare
