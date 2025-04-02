@@ -24,19 +24,19 @@ install_package "sshpass" "sudo apt-get update && sudo apt-get install -y sshpas
 install_package "python3" "sudo apt-get install -y python3"
 install_package "pip3" "sudo apt-get install -y python3-pip"
 
-# Ansible 설치
-install_package "ansible" "pip3 install ansible"
+# Ansible 설치 (옵션 추가)
+install_package "ansible" "pip3 install --break-system-packages ansible"
 
-# Jinja2 설치
-install_package "jinja2" "pip3 install Jinja2"
+# Jinja2 설치 (옵션 추가)
+install_package "jinja2" "pip3 install --break-system-packages Jinja2"
 
-# netaddr 설치
-install_package "netaddr" "pip3 install netaddr"
+# netaddr 설치 (옵션 추가)
+install_package "netaddr" "pip3 install --break-system-packages netaddr"
 
 # Kubespray requirements 설치
 if [ -f "requirements.txt" ]; then
     echo "[INFO] Kubespray requirements를 설치합니다."
-    pip3 install -r requirements.txt
+    pip3 install --break-system-packages -r requirements.txt
 else
     echo "[WARN] requirements.txt 파일을 찾을 수 없습니다. Kubespray requirements 설치를 건너뜁니다."
 fi
