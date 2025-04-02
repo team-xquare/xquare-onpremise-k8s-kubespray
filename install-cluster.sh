@@ -5,13 +5,7 @@ SERVER_LIST="./servers.txt"
 INVENTORY_FILE="./inventory/xquare/inventory.ini"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-# servers.txt 파일 존재 확인
-if [ ! -f "$SERVER_LIST" ]; then
-    echo "[ERROR] servers.txt 파일이 존재하지 않습니다."
-    exit 1
-fi
-
-# 필수 패키지 설치 확인 및 설치
+# 필수 패키지 설치 확인 및 설치 함수
 install_package() {
     PACKAGE_NAME=$1
     INSTALL_COMMAND=$2
@@ -33,33 +27,25 @@ install_package "pip3" "sudo apt-get install -y python3-pip"
 # Ansible 설치
 install_package "ansible" "pip3 install ansible"
 
-# Jinja2 버전 확인 및 설치
-if ! python3 -c "import jinja2; assert jinja2.__version__ >= '2.11'" &>/dev/null; then
-    echo "[INFO] Jinja2를 설치하거나 업그레이드합니다."
-    pip3 install Jinja2>=2.11
-else
-    echo "[INFO] Jinja2가 이미 설치되어 있거나 최신 버전입니다."
-fi
+# Jinja2 설치
+install_package "jinja2" "pip3 install Jinja2"
 
-# netaddr 라이브러리 설치
-if ! python3 -c "import netaddr" &>/dev/null; then
-    echo "[INFO] netaddr 라이브러리를 설치합니다."
-    pip3 install netaddr
-else
-    echo "[INFO] netaddr 라이브러리가 이미 설치되어 있습니다."
-fi
-
-# Kubespray 클론
-if [ ! -d "kubespray" ]; then
-    echo "[INFO] Kubespray를 클론합니다."
-    git clone https://github.com/kubernetes-sigs/kubespray.git
-else
-    echo "[INFO] Kubespray 디렉토리가 이미 존재합니다."
-fi
+# netaddr 설치
+install_package "netaddr" "pip3 install netaddr"
 
 # Kubespray requirements 설치
-echo "[INFO] Kubespray requirements를 설치합니다."
-pip3 install -r kubespray/requirements.txt
+if [ -f "requirements.txt" ]; then
+    echo "[INFO] Kubespray requirements를 설치합니다."
+    pip3 install -r requirements.txt
+else
+    echo "[WARN] requirements.txt 파일을 찾을 수 없습니다. Kubespray requirements 설치를 건너뜁니다."
+fi
+
+# servers.txt 파일 존재 확인
+if [ ! -f "$SERVER_LIST" ]; then
+    echo "[ERROR] servers.txt 파일이 존재하지 않습니다."
+    exit 1
+fi
 
 # 서버 목록에서 /etc/hosts에 추가할 엔트리 생성
 HOSTS_ENTRY=$(awk '{print $2" "$3}' "$SERVER_LIST")
@@ -148,5 +134,10 @@ echo "[INFO] 노드 PING 테스트"
 ansible all -m ping -i $INVENTORY_FILE
 
 # Kubespray를 통한 Kubernetes 클러스터 설치
-echo "[INFO] Kubernetes 클러스터 설치 시작"
-ansible-playbook -i $INVENTORY_FILE kubespray/cluster.yml
+if [ -f "cluster.yml" ]; then
+    echo "[INFO] Kubernetes 클러스터 설치 시작"
+    ansible-playbook -i $INVENTORY_FILE cluster.yml
+else
+    echo "[ERROR] cluster.yml 파일을 찾을 수 없습니다. Kubernetes 클러스터 설치를 중단합니다."
+    exit 1
+fi
