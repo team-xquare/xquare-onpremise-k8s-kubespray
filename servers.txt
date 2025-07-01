@@ -1,6 +1,8 @@
-master 10.220.147.66 xquare-master1 xquare-master xquare 2222 xquare
-master 10.220.147.67 xquare-master2 xquare-master xquare 2222 xquare
-master 10.220.147.69 xquare-master3 xquare-master xquare 2222 xquare
+master 10.220.147.67 master01 master01 master01 10022 master01
+master 10.220.147.68 master02 master02 master02 10022 master02
+master 10.220.147.69 master03 master03 master03 10022 master03
 
-worker 10.220.147.64 xquare-worker1 xquare xquare 2222 xquare
-worker 10.220.147.65 xquare-worker2 xquare xquare 2222 xquare
+worker 10.220.147.70 worker01 worker01 worker01 10022 worker01
+worker 10.220.147.64 worker02 worker02 worker02 10022 worker02
+worker 10.220.147.65 worker03 worker03 worker03 10022 worker03
+worker 10.220.147.66 worker04 worker04 worker04 10022 worker04
